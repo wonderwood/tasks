@@ -1,0 +1,26 @@
+<?php
+
+/**
+ * implements Hook_schema();
+ */
+function address_book_schema() {
+  $schema['edu_contacts'] = array(
+    'description' => 'address_book table',
+    'fields'      => array(
+      'cid'        => array(
+        'description' => 'Contact identifier.',
+        'type'        => 'serial',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+      ),
+      'bundle'     => array(
+        'description' => 'Entity bundle name.',
+        'type'        => 'varchar',
+        'length'      => 255,
+      ),
+    ),
+    'primary key' => array('cid'),
+  );
+
+  return $schema;
+}

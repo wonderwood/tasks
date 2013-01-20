@@ -1,0 +1,15 @@
+name = address_book
+description = address book custom module
+core = 7.x
+dependencies[] = date_api
+dependencies[] = date
+dependencies[] = entity
+dependencies[] = email
+dependencies[] = image
+dependencies[] = taxonomy
+dependencies[] = text
+files[] = address_book.contact.admin.inc
+files[] = address_book.contact.view.inc
+files[] = address_book.contact.add.inc
+files[] = address_book.contact.edit.inc
+files[] = address_book.contact.delete.inc

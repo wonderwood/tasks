@@ -1,0 +1,507 @@
+<?php
+
+/**
+ * Implements of hook_entity_info();
+ *
+ * - Entity is a 'contact'
+ * - Entity bundle is 'contact'
+ *
+ * @return mixed
+ */
+function address_book_entity_info() {
+  $info['contact'] = array(
+    'label'            => t('Address book contact'),
+    'controller class' => 'ContactController',
+    'base table'       => 'edu_contacts',
+    'fieldable'        => TRUE,
+    'entity keys'      => array(
+      'id' => 'cid',
+    ),
+    'bundle keys'      => array(
+      'bundle' => 'bundle',
+    ),
+    'load hook'        => 'contact_load',
+    'static cache'     => TRUE,
+    'bundles'          => array(
+      'contact' => array(
+        'label' => 'Contact',
+        'admin' => array(
+          'path'             => 'admin/structure/address_book',
+          'access arguments' => array('administer address book'),
+        ),
+      ),
+    ),
+    'view modes'       => array(
+      'full' => array(
+        'label'           => t('Full contact'),
+        'custom settings' => FALSE,
+      ),
+    )
+  );
+
+  return $info;
+}
+
+/**
+ * Implements hook_entity_property_info_alter().
+ */
+function address_book_entity_property_info_alter(&$info) {
+}
+
+/**
+ * Contact controller class
+ */
+class ContactController extends EntityAPIControllerExportable {
+}
+
+
+/**
+ * Implements hook_menu();
+ */
+function address_book_menu() {
+  /**
+   * ========================================================================
+   *                            Admin/structure urls
+   * ========================================================================
+   */
+
+  // Admin page for module
+  $items['admin/structure/address_book'] = array(
+    'type'             => MENU_NORMAL_ITEM,
+    'title'            => 'Address book',
+    'description'      => 'Address book configuration',
+    'page callback'    => 'drupal_get_form',
+    'file'             => 'address_book.contact.admin.inc',
+    'page arguments'   => array('address_book_contact_adminform'),
+    'access arguments' => array('administer address book'),
+  );
+
+  $items['admin/structure/address_book/list'] = array(
+    'type'  => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'List',
+  );
+
+  // Contact add link as local action
+  $items['admin/structure/address_book/add'] = array(
+    'type'             => MENU_LOCAL_ACTION,
+    'title'            => 'Add contact',
+    'description'      => 'Add contact to address book',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('address_book_contactform'),
+    'access arguments' => array('add contact to address book'),
+    'file'             => 'address_book.contact.form.inc',
+  );
+
+
+  /**
+   * ========================================================================
+   *                            Admin/content urls
+   * ========================================================================
+   */
+
+  $items['admin/content/address_book'] = array(
+    'type'             => MENU_NORMAL_ITEM,
+    'title'            => 'Address book',
+    'description'      => 'Address book contacts',
+    'page callback'    => 'drupal_get_form',
+    'file'             => 'address_book.contact.admin.inc',
+    'page arguments'   => array('address_book_contact_adminform'),
+    'access arguments' => array('administer address book'),
+  );
+
+  $items['admin/content/address_book/list'] = array(
+    'type'   => MENU_DEFAULT_LOCAL_TASK,
+    'title'  => 'List',
+    'weight' => 0,
+  );
+
+  // Contact add link as action
+  $items['admin/content/address_book/add-contact'] = array(
+    'type'             => MENU_LOCAL_ACTION,
+    'title'            => 'Add contact',
+    'description'      => 'Add contact to address book',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('address_book_contactform'),
+    'access arguments' => array('add contact to address book'),
+    'file'             => 'address_book.contact.form.inc',
+    'weight'           => 10,
+  );
+
+
+  /**
+   * ========================================================================
+   *                            Contact urls
+   * ========================================================================
+   */
+  $items['address_book/%contact'] = array(
+    'title'            => 'View',
+    'page callback'    => 'address_book_contact_page_view',
+    'page arguments'   => array(1),
+    'access arguments' => array('view contact from address book'),
+    'file'             => 'address_book.contact.view.inc',
+  );
+
+  $items['address_book/%contact/view'] = array(
+    'title'  => 'View',
+    'type'   => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => 0,
+  );
+
+  $items['address_book/%contact/edit'] = array(
+    'title'            => 'Edit',
+    'description'      => 'Edit contact',
+    'type'             => MENU_LOCAL_TASK,
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('address_book_contactform', 1),
+    'access arguments' => array('edit contacts in address book'),
+    'file'             => 'address_book.contact.form.inc',
+    'weight'           => 10,
+  );
+
+  $items['address_book/%contact/delete'] = array(
+    'title'            => 'Delete',
+    'description'      => 'Delete contact',
+    'type'             => MENU_LOCAL_TASK,
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('adress_book_contact_deleteform', 1),
+    'access arguments' => array('remove contact from address book'),
+    'file'             => 'address_book.contact.delete.inc',
+    'weight'           => 20,
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission();
+ *
+ * @return array
+ */
+function address_book_permission() {
+  return array(
+    'administer address book'          => array(
+      'title'       => t('Administer address book'),
+      'description' => t('Allow to use administration page'),
+    ),
+    'add contact to address book'      => array(
+      'title'       => t('Add contact to address book'),
+      'description' => t('Allow to add contact into address book'),
+    ),
+    'edit contacts in address book'    => array(
+      'title'       => t('Edit contact to address book'),
+      'description' => t('Allow to add contact into address book'),
+    ),
+    'remove contact from address book' => array(
+      'title'       => t('Remove contact from address book'),
+      'description' => t('Allow to remove contact from address book'),
+    ),
+    'view contact from address book'   => array(
+      'title'       => t('View contact from address book'),
+      'description' => t('Allow to view contact from address book'),
+    ),
+  );
+
+}
+
+/**
+ * Contact load object by contact ID
+ *
+ * @param      $cid
+ * @param bool $reset
+ *
+ * @return mixed
+ */
+function contact_load($cid, $reset = FALSE) {
+  $contacts = contact_load_multiple(array($cid), array(), $reset);
+
+  return reset($contacts);
+}
+
+function contact_load_multiple($cids = array(), $conditions = array(), $reset = FALSE) {
+  return entity_load('contact', $cids, $conditions, $reset);
+}
+
+/**
+ * Save contact
+ * @param $contact
+ */
+function contact_save($contact) {
+  entity_save('contact', $contact);
+}
+
+/**
+ * Delete contact
+ *
+ * @param $contact
+ */
+function contact_delete($contact) {
+  entity_delete('contact', entity_id('contact', $contact));
+}
+
+/**
+ * Implements hook_install()
+ *
+ * Create if no exits fields and taxonomy vocabularies
+ */
+function address_book_install() {
+  /**
+   * Create vocabulary for category
+   */
+  if (!taxonomy_vocabulary_machine_name_load('contact_categories')) {
+    $voc        = array(
+      'name'         => 'Contact categories',
+      'machine_name' => 'contact_categories',
+      'description'  => t('Contact categories list.'),
+      'module'       => 'taxonomy',
+    );
+    $vocabulary = (object) $voc;
+    taxonomy_vocabulary_save($vocabulary);
+  }
+
+
+  /**
+   * Photo field
+   */
+  if (!field_info_field('field_contact_photo')) {
+    $field = array(
+      'field_name' => 'field_contact_photo',
+      'type'       => 'image',
+      'settings'   => array(
+        'uri_scheme'    => 'public',
+        'default_image' => 0,
+      ),
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_photo',
+      'entity_type' => 'contact',
+      'label'       => 'Photo',
+      'bundle'      => 'contact',
+      'required'    => FALSE,
+      'widget'      => array(
+        'type' => 'image'
+      )
+    );
+    field_create_instance($field_instance);
+  }
+
+
+  /**
+   * First name
+   */
+  if (!field_info_field('field_contact_first_name')) {
+    $field = array(
+      'field_name' => 'field_contact_first_name',
+      'type'       => 'text',
+      'settings'   => array(
+        'max_length' => 255,
+      )
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_first_name',
+      'entity_type' => 'contact',
+      'label'       => 'First name',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type' => 'text'
+      )
+    );
+    field_create_instance($field_instance);
+  }
+
+
+  /**
+   * Last name
+   */
+  if (!field_info_field('field_contact_last_name')) {
+    $field = array(
+      'field_name' => 'field_contact_last_name',
+      'type'       => 'text',
+      'settings'   => array(
+        'max_length' => 255,
+      )
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_last_name',
+      'entity_type' => 'contact',
+      'label'       => 'Last name',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type' => 'text'
+      )
+    );
+    field_create_instance($field_instance);
+  }
+
+
+  /**
+   * e-mail
+   */
+  if (!field_info_field('field_contact_e_mail')) {
+    $field = array(
+      'field_name' => 'field_contact_e_mail',
+      'type'       => 'email',
+      'cardinality' => -1,
+      'settings'   => array(),
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_e_mail',
+      'entity_type' => 'contact',
+      'label'       => 'E-mail',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type' => 'text'
+      )
+    );
+    field_create_instance($field_instance);
+  }
+
+
+  /**
+   * phone
+   */
+  if (!field_info_field('field_contact_phone')) {
+    $field = array(
+      'field_name' => 'field_contact_phone',
+      'type'       => 'text',
+      'cardinality' => -1,
+      'settings'   => array(
+        'max_length' => 255,
+      ),
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_phone',
+      'entity_type' => 'contact',
+      'label'       => 'Phone',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type' => 'text'
+      )
+    );
+    field_create_instance($field_instance);
+  }
+
+
+  /**
+   * category
+   */
+  if (!field_info_field('field_contact_category')) {
+    $field = array(
+      'field_name' => 'field_contact_category',
+      'type'       => 'taxonomy_term_reference',
+      'settings'   => array(
+        'allowed_values' => array(
+          array(
+            'vocabulary' => 'contact_categories',
+            'parent'     => 0
+          ),
+        )
+      )
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_category',
+      'entity_type' => 'contact',
+      'label'       => 'Category',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type' => 'options_select'
+      ),
+    );
+    field_create_instance($field_instance);
+
+    /**
+     * comment
+     */
+    if (!field_info_field('field_contact_comment')) {
+      $field = array(
+        'field_name' => 'field_contact_comment',
+        'type'       => 'text_long',
+        'settings'   => array(),
+      );
+      field_create_field($field);
+
+      $field_instance = array(
+        'field_name'  => 'field_contact_comment',
+        'entity_type' => 'contact',
+        'label'       => 'Comment',
+        'bundle'      => 'contact',
+        'required'    => TRUE,
+        'widget'      => array(
+          'type'     => 'text',
+          'settings' => array(
+            'text_processing' => 0,
+          ),
+        ),
+      );
+      field_create_instance($field_instance);
+    }
+  }
+
+  /**
+   * birthday
+   */
+  if (!field_info_field('field_contact_birthday')) {
+    $field = array(
+      'field_name'  => 'field_contact_birthday',
+      'type'        => 'datetime',
+      'settings'   => array(
+      'granularity' => array(
+        'month'  => 'month',
+        'day'    => 'day',
+        'year'   => 'year',
+        'hour'   => 0,
+        'minute' => 0,
+        'second' => 0,
+      ),
+    )
+    );
+    field_create_field($field);
+
+    $field_instance = array(
+      'field_name'  => 'field_contact_birthday',
+      'entity_type' => 'contact',
+      'label'       => 'Birthday',
+      'bundle'      => 'contact',
+      'required'    => TRUE,
+      'widget'      => array(
+        'type'     => 'date_select',
+        'settings' => array(
+          'default_value' => 'now',
+          'input_format'  => 'Y-m-d H:i:s',
+          'year_range'    => '-100:+0',
+        ),
+      ),
+    );
+    field_create_instance($field_instance);
+  }
+}
+
+function address_book_uninstall() {
+  field_delete_field('field_contact_first_name');
+  field_delete_field('field_contact_last_name');
+  field_delete_field('field_contact_e_mail');
+  field_delete_field('field_contact_phone');
+  field_delete_field('field_contact_category');
+  field_delete_field('field_contact_photo');
+  field_delete_field('birthday');
+  field_delete_field('field_contact_comment');
+}
+
+function address_book_enable() {
+}
